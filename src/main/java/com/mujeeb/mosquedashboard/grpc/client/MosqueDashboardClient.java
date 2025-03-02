@@ -4,58 +4,73 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import com.mujeeb.mosquedashboard.grpc.EmptyRequest;
 import com.mujeeb.mosquedashboard.grpc.GenericReply;
+import com.mujeeb.mosquedashboard.grpc.GetDataForMobileAppRequest;
+import com.mujeeb.mosquedashboard.grpc.HijriAdjustmentUpdateRequest;
 import com.mujeeb.mosquedashboard.grpc.MosqueDashboardServiceGrpc;
 import com.mujeeb.mosquedashboard.grpc.MosqueDashboardServiceGrpc.MosqueDashboardServiceBlockingStub;
 import com.mujeeb.mosquedashboard.grpc.MosqueDashboardServiceGrpc.MosqueDashboardServiceStub;
 import com.mujeeb.mosquedashboard.grpc.NamazTime;
+import com.mujeeb.mosquedashboard.grpc.ScreenSaverStateUpdateRequest;
+import com.mujeeb.mosquedashboard.grpc.StringContainer;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.grpc.stub.StreamObserver;
 
 public class MosqueDashboardClient  {
 	
 	protected static ManagedChannel channel;
 	protected static MosqueDashboardServiceBlockingStub blockingStub;
 	protected static MosqueDashboardServiceStub asyncStub;
-
+	
 	public MosqueDashboardClient(String host, int port) throws IOException {
 		this(ManagedChannelBuilder.forAddress(host, port).usePlaintext());
 	}
 
-	/** Create a RouteGuide server using serverBuilder as a base and features as data. */
 	public MosqueDashboardClient(ManagedChannelBuilder<?> channelBuilder) {
 		  channel = channelBuilder.build();
 		  blockingStub = MosqueDashboardServiceGrpc.newBlockingStub(channel);
 		  asyncStub = MosqueDashboardServiceGrpc.newStub(channel);
 	}
 	
-	public static void sendRequestToServer(String timeName, int hour, int minute) {
+	public static GetDataForMobileAppRequest getDataForMobileApp() {
+		return blockingStub.getDataForMobileApp(EmptyRequest.newBuilder().build());
+	}
+	
+	public static GenericReply changeNamazTime(String timeName, int hour, int minute) {
 		
 		NamazTime request = NamazTime.newBuilder()
 						.setNamazTimeName(timeName)
 						.setHour(hour)
 						.setMinute(minute).build();
 		
-		asyncStub.updateNamazTime(request, new StreamObserver<GenericReply>() {
-			
-			@Override
-			public void onNext(GenericReply reply) {
-				System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
-			}
-			
-			@Override
-			public void onError(Throwable error) {
-				error.printStackTrace();
-			}
-			
-			@Override
-			public void onCompleted() {
-				System.out.println("Request Completed.");
-			}
-		});
-//		System.out.println(blockingStub.updateNamazTime(request));
+		return blockingStub.updateNamazTime(request);
+	}
+	
+	public static GenericReply changeHijriAdjustment(int hijriAdjustment) {
+		
+		return blockingStub.changeHijriAdjustment(HijriAdjustmentUpdateRequest.newBuilder().setHijriAdjustment(hijriAdjustment).build());
+	}
+	
+	public static GenericReply testAudio() {
+		
+		return blockingStub.testAudio(EmptyRequest.newBuilder().build());
+	}
+	
+	public static GenericReply changeScreenSaverState(boolean state) {
+		
+		return blockingStub.changeScreenSaverState(ScreenSaverStateUpdateRequest.newBuilder().setIsOn(state).build());
+	}
+	
+	public static GenericReply changeDateTime(String dateTime) {
+		
+		return blockingStub.setDateTime(StringContainer.newBuilder().setStr(dateTime).build());
+	}
+	
+	public static GenericReply restartSystem() {
+		
+		return blockingStub.restartSystem(EmptyRequest.newBuilder().build());
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -72,7 +87,7 @@ public class MosqueDashboardClient  {
 			ex.printStackTrace();
 		}
 		
-		System.out.println("Welcome to Mosque Dashboard gRPC test, by Mujeeb Mohammad\n");
+		System.out.println("Welcome to Mosque Dashboard gRPC test, by Mujeeb Mohammad");
 		
 		while(true) {
 			System.out.println("\n");
@@ -82,9 +97,11 @@ public class MosqueDashboardClient  {
 			System.out.println("3. Change Hijri Adjustment");
 			System.out.println("4. Test Audio");
 			System.out.println("5. Change Screen Saver State");
-			System.out.println("6. Restart System\n");
+			System.out.println("6. Change Date/Time");
+			System.out.println("7. Restart System");
+			System.out.println("8. Exit\n");
 			
-			System.out.println("Enter your choice: ");
+			System.out.print("Enter your choice: ");
 			
 			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 			
@@ -92,20 +109,65 @@ public class MosqueDashboardClient  {
 			
 			switch(line) {
 				case "1":
+						  System.out.println("Got the data successfully: " + getDataForMobileApp().toString());
 						  break;
 				case "2":
-					  break;
+						  System.out.println("\nEnter new namaz time details in this format: <Namaz Time> <Hour> <Minute>:");
+						  String[] time = reader.readLine().split(" ");
+						  if(time.length < 3) {
+							  System.out.println("Invalid entry.");
+							  break;
+						  }
+						  GenericReply reply = changeNamazTime(time[0], Integer.parseInt(time[1]), Integer.parseInt(time[2]));
+						  System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
+						  break;
 				case "3":
-					  break;
+						  System.out.print("\nEnter Hijri Adjustment value: ");
+						  String strAjustment = reader.readLine();
+						  int adjustment;
+						  try {
+							adjustment = Integer.parseInt(strAjustment);  
+						  }catch(Exception ex) {
+							  System.out.println("Invalid entry.");
+							  break;
+						  }
+						  reply = changeHijriAdjustment(adjustment);
+						  System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
+						  break;
 				case "4":
-					  break;
+						  reply = testAudio();
+						  System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
+						  break;
 				case "5":
-					  break;
+						  System.out.print("\nEnter new Screen Saver state (on/off):");
+						  String strState = reader.readLine().toUpperCase();
+						  boolean newState;
+						  if(strState.equals("ON")) {
+							newState = true;  
+						  } else if(strState.equals("OFF")) {
+							newState = false;
+						  } else {
+							System.out.println("Invalid entry.");
+							break;
+						  }
+						  reply = changeScreenSaverState(newState);
+						  System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
+						  break;
 				case "6":
-					  break;
+						  System.out.print("\nEnter new Date/Time in format \"dd MMM yyyy HH:mm:ss\", for example \"1 MAR 2025 16:33:25\": ");
+					      String strDateTime = reader.readLine();
+						  reply = changeDateTime(strDateTime);
+						  System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
+						  break;
+				case "7":
+						  reply = restartSystem();
+						  System.out.println(reply.getResponseCode() + ":" + reply.getDescription());
+						  break;
+				case "8":
+						  System.exit(0);
 				default:
-					  System.out.println("\nPlease enter a valid Option.");
-					  break;
+						  System.out.println("\nPlease enter a valid Option.");
+						  break;
 			}
 		}
 	}
