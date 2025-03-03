@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import com.mujeeb.mosquedashboard.grpc.AuthData;
 import com.mujeeb.mosquedashboard.grpc.EmptyRequest;
 import com.mujeeb.mosquedashboard.grpc.GenericReply;
 import com.mujeeb.mosquedashboard.grpc.GetDataForMobileAppRequest;
@@ -24,6 +25,9 @@ public class MosqueDashboardClient  {
 	protected static MosqueDashboardServiceBlockingStub blockingStub;
 	protected static MosqueDashboardServiceStub asyncStub;
 	
+	protected static String userName;
+	protected static String password;
+	
 	public MosqueDashboardClient(String host, int port) throws IOException {
 		this(ManagedChannelBuilder.forAddress(host, port).usePlaintext());
 	}
@@ -41,6 +45,7 @@ public class MosqueDashboardClient  {
 	public static GenericReply changeNamazTime(String timeName, int hour, int minute) {
 		
 		NamazTime request = NamazTime.newBuilder()
+						.setAuthData(AuthData.newBuilder().setUserName(userName).setPassword(password).build())
 						.setNamazTimeName(timeName)
 						.setHour(hour)
 						.setMinute(minute).build();
@@ -50,7 +55,10 @@ public class MosqueDashboardClient  {
 	
 	public static GenericReply changeHijriAdjustment(int hijriAdjustment) {
 		
-		return blockingStub.changeHijriAdjustment(HijriAdjustmentUpdateRequest.newBuilder().setHijriAdjustment(hijriAdjustment).build());
+		return blockingStub.changeHijriAdjustment(
+				HijriAdjustmentUpdateRequest.newBuilder()
+					.setAuthData(AuthData.newBuilder().setUserName(userName).setPassword(password).build())
+					.setHijriAdjustment(hijriAdjustment).build());
 	}
 	
 	public static GenericReply testAudio() {
@@ -60,12 +68,18 @@ public class MosqueDashboardClient  {
 	
 	public static GenericReply changeScreenSaverState(boolean state) {
 		
-		return blockingStub.changeScreenSaverState(ScreenSaverStateUpdateRequest.newBuilder().setIsOn(state).build());
+		return blockingStub.changeScreenSaverState(
+					ScreenSaverStateUpdateRequest.newBuilder()
+						.setAuthData(AuthData.newBuilder().setUserName(userName).setPassword(password).build())
+						.setIsOn(state).build());
 	}
 	
 	public static GenericReply changeDateTime(String dateTime) {
 		
-		return blockingStub.setDateTime(StringContainer.newBuilder().setStr(dateTime).build());
+		return blockingStub.setDateTime(
+						StringContainer.newBuilder()
+							.setAuthData(AuthData.newBuilder().setUserName(userName).setPassword(password).build())
+							.setStr(dateTime).build());
 	}
 	
 	public static GenericReply restartSystem() {
@@ -75,12 +89,14 @@ public class MosqueDashboardClient  {
 	
 	public static void main(String[] args) throws IOException {
 		
-		if(args.length < 1) {
-			System.out.println("Usage: MosqueDashboardClient <RemoteHost>");
+		if(args.length < 3) {
+			System.out.println("Usage: MosqueDashboardClient <RemoteHost> <UserName> <Password>");
 			return;
 		}
 		
 		String host = args[0];
+		userName = args[1];
+		password = args[2];
 		try {
 			new MosqueDashboardClient(host, 8090);
 		} catch(Exception ex) {
